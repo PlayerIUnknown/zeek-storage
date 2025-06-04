@@ -3,7 +3,7 @@ import subprocess
 import pandas as pd
 
 # === CONFIGURATION ===
-PCAP_PATH = "/root/test.pcap"
+PCAP_PATH = "/root/test.pcap"  # or /root/smallFlows.pcap
 OFFLINE_LOG_DIR = "/tmp/zeek_offline_logs"
 CLUSTER_LOG_DIR = "/opt/zeek/logs/current"
 LOG_FILES = ["conn.log", "dns.log", "http.log", "ssl.log"]
@@ -11,12 +11,11 @@ LOG_FILES = ["conn.log", "dns.log", "http.log", "ssl.log"]
 def run_zeek_offline():
     print(f"📦 Running Zeek offline on {PCAP_PATH}...")
 
-    # Prepare output directory
     os.makedirs(OFFLINE_LOG_DIR, exist_ok=True)
     for file in os.listdir(OFFLINE_LOG_DIR):
         os.remove(os.path.join(OFFLINE_LOG_DIR, file))
 
-    # Run Zeek inside the output directory
+    # Run Zeek inside the offline directory
     cmd = f"cd {OFFLINE_LOG_DIR} && zeek -C -r {PCAP_PATH}"
     result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -47,23 +46,41 @@ def compare_logs(cluster_dir, offline_dir, log_file):
     if df_cluster is None or df_offline is None:
         return
 
-    # Sort by timestamp if available
-    if 'ts' in df_cluster.columns:
-        df_cluster = df_cluster.sort_values('ts')
-        df_offline = df_offline.sort_values('ts')
+    # Define essential columns per log file
+    key_fields = {
+        "conn.log": ["id.orig_h", "id.resp_h", "proto", "service", "conn_state"],
+        "dns.log": ["query", "qtype_name", "rcode_name", "answers"],
+        "http.log": ["host", "uri", "method", "status_code", "user_agent"],
+        "ssl.log": ["version", "cipher", "server_name", "validation_status"]
+    }
+
+    keys = key_fields.get(log_file, df_cluster.columns.intersection(df_offline.columns).tolist())
+
+    # Drop NaNs, duplicates, and sort by keys
+    df_cluster_trim = df_cluster[keys].dropna(how='all').drop_duplicates().sort_values(by=keys).reset_index(drop=True)
+    df_offline_trim = df_offline[keys].dropna(how='all').drop_duplicates().sort_values(by=keys).reset_index(drop=True)
 
     print(f"\n🔍 Comparing {log_file}")
-    print(f"  Cluster rows : {len(df_cluster)}")
-    print(f"  Offline rows : {len(df_offline)}")
+    print(f"  Cluster rows (filtered): {len(df_cluster_trim)}")
+    print(f"  Offline rows (filtered): {len(df_offline_trim)}")
 
-    df_combined = pd.concat([df_cluster, df_offline])
-    df_diff = df_combined.drop_duplicates(keep=False)
+    # Compare using sets of tuples
+    cluster_set = set(map(tuple, df_cluster_trim.to_numpy()))
+    offline_set = set(map(tuple, df_offline_trim.to_numpy()))
 
-    if df_diff.empty:
-        print("  ✅ No differences found.")
-    else:
-        print(f"  ⚠️ {len(df_diff)} differing rows found. Sample:")
-        print(df_diff.head(5).to_string(index=False))
+    only_in_cluster = cluster_set - offline_set
+    only_in_offline = offline_set - cluster_set
+
+    print(f"  ⚠️ {len(only_in_cluster)} rows only in cluster logs")
+    print(f"  ⚠️ {len(only_in_offline)} rows only in offline logs")
+
+    if only_in_cluster:
+        print("\n  🔸 Example row only in cluster:")
+        print(list(only_in_cluster)[0])
+
+    if only_in_offline:
+        print("\n  🔹 Example row only in offline:")
+        print(list(only_in_offline)[0])
 
 def main():
     run_zeek_offline()
