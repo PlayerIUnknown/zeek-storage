@@ -3,7 +3,7 @@ import subprocess
 import pandas as pd
 
 # === CONFIGURATION ===
-PCAP_PATH = "/root/test.pcap"  # or /root/smallFlows.pcap
+PCAP_PATH = "/root/smallFlows.pcap"  # Update path if needed
 OFFLINE_LOG_DIR = "/tmp/zeek_offline_logs"
 CLUSTER_LOG_DIR = "/opt/zeek/logs/current"
 LOG_FILES = ["conn.log", "dns.log", "http.log", "ssl.log"]
@@ -15,7 +15,7 @@ def run_zeek_offline():
     for file in os.listdir(OFFLINE_LOG_DIR):
         os.remove(os.path.join(OFFLINE_LOG_DIR, file))
 
-    # Run Zeek inside the offline directory
+    # Run Zeek inside the offline log directory
     cmd = f"cd {OFFLINE_LOG_DIR} && zeek -C -r {PCAP_PATH}"
     result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -46,7 +46,7 @@ def compare_logs(cluster_dir, offline_dir, log_file):
     if df_cluster is None or df_offline is None:
         return
 
-    # Define essential columns per log file
+    # Define key fields for comparison per log type
     key_fields = {
         "conn.log": ["id.orig_h", "id.resp_h", "proto", "service", "conn_state"],
         "dns.log": ["query", "qtype_name", "rcode_name", "answers"],
@@ -54,17 +54,22 @@ def compare_logs(cluster_dir, offline_dir, log_file):
         "ssl.log": ["version", "cipher", "server_name", "validation_status"]
     }
 
-    keys = key_fields.get(log_file, df_cluster.columns.intersection(df_offline.columns).tolist())
+    expected_fields = key_fields.get(log_file, [])
+    available_fields = list(set(expected_fields) & set(df_cluster.columns) & set(df_offline.columns))
 
-    # Drop NaNs, duplicates, and sort by keys
-    df_cluster_trim = df_cluster[keys].dropna(how='all').drop_duplicates().sort_values(by=keys).reset_index(drop=True)
-    df_offline_trim = df_offline[keys].dropna(how='all').drop_duplicates().sort_values(by=keys).reset_index(drop=True)
+    if not available_fields:
+        print(f"\n⚠️ Skipping {log_file}: No matching fields to compare.")
+        print(f"🔍 Cluster columns: {df_cluster.columns.tolist()}")
+        print(f"🔍 Offline columns: {df_offline.columns.tolist()}")
+        return
+
+    df_cluster_trim = df_cluster[available_fields].dropna(how='all').drop_duplicates().sort_values(by=available_fields).reset_index(drop=True)
+    df_offline_trim = df_offline[available_fields].dropna(how='all').drop_duplicates().sort_values(by=available_fields).reset_index(drop=True)
 
     print(f"\n🔍 Comparing {log_file}")
     print(f"  Cluster rows (filtered): {len(df_cluster_trim)}")
     print(f"  Offline rows (filtered): {len(df_offline_trim)}")
 
-    # Compare using sets of tuples
     cluster_set = set(map(tuple, df_cluster_trim.to_numpy()))
     offline_set = set(map(tuple, df_offline_trim.to_numpy()))
 
