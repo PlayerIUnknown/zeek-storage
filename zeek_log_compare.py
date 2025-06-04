@@ -10,17 +10,15 @@ LOG_FILES = ["conn.log", "dns.log", "http.log", "ssl.log"]
 
 def run_zeek_offline():
     print(f"📦 Running Zeek offline on {PCAP_PATH}...")
-    os.makedirs(OFFLINE_LOG_DIR, exist_ok=True)
 
-    # Clean previous logs
+    # Prepare output directory
+    os.makedirs(OFFLINE_LOG_DIR, exist_ok=True)
     for file in os.listdir(OFFLINE_LOG_DIR):
         os.remove(os.path.join(OFFLINE_LOG_DIR, file))
 
-    cmd = [
-        "zeek", "-C", "-r", PCAP_PATH,
-        "--output_dir", OFFLINE_LOG_DIR
-    ]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Run Zeek inside the output directory
+    cmd = f"cd {OFFLINE_LOG_DIR} && zeek -C -r {PCAP_PATH}"
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if result.returncode != 0:
         print("❌ Zeek failed:\n", result.stderr.decode())
@@ -58,7 +56,6 @@ def compare_logs(cluster_dir, offline_dir, log_file):
     print(f"  Cluster rows : {len(df_cluster)}")
     print(f"  Offline rows : {len(df_offline)}")
 
-    # Find rows that are different
     df_combined = pd.concat([df_cluster, df_offline])
     df_diff = df_combined.drop_duplicates(keep=False)
 
