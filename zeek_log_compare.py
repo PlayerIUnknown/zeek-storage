@@ -18,10 +18,10 @@ def run_zeek_offline():
 
     cmd = [
         "zeek", "-C", "-r", PCAP_PATH,
-        f"Log::default_path={OFFLINE_LOG_DIR}"
+        "--output_dir", OFFLINE_LOG_DIR
     ]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+
     if result.returncode != 0:
         print("❌ Zeek failed:\n", result.stderr.decode())
         exit(1)
