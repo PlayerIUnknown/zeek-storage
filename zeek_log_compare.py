@@ -52,7 +52,7 @@ def compare_logs(cluster_dir, offline_dir, log_file):
     if df_cluster is None or df_offline is None:
         return
 
-    # Filter only fields that exist in both logs
+    # Filter only common key fields
     expected_fields = KEY_FIELDS.get(log_file, [])
     common_fields = [f for f in expected_fields if f in df_cluster.columns and f in df_offline.columns]
     if not common_fields:
@@ -68,20 +68,22 @@ def compare_logs(cluster_dir, offline_dir, log_file):
     only_in_cluster_keys = cluster_keys - offline_keys
     only_in_offline_keys = offline_keys - cluster_keys
 
-    print(f"  ✅ Cluster filtered rows: {len(df_cluster_sub)}")
-    print(f"  ✅ Offline filtered rows: {len(df_offline_sub)}")
+    print(f"  📄 Total cluster rows: {len(df_cluster)}")
+    print(f"  📄 Total offline rows: {len(df_offline)}")
+    print(f"  ✅ Cluster filtered rows (deduplicated): {len(df_cluster_sub)}")
+    print(f"  ✅ Offline filtered rows (deduplicated): {len(df_offline_sub)}")
     print(f"  ⚠️ Rows only in cluster: {len(only_in_cluster_keys)}")
     print(f"  ⚠️ Rows only in offline: {len(only_in_offline_keys)}")
 
     if only_in_cluster_keys:
-        print(f"\n  🔸 FULL ROWS only in cluster ({len(only_in_cluster_keys)}):")
-        for key in list(only_in_cluster_keys)[:5]:  # limit preview
+        print(f"\n  🔸 FULL ROWS only in cluster ({min(len(only_in_cluster_keys), 5)} shown):")
+        for key in list(only_in_cluster_keys)[:5]:
             row = df_cluster.loc[(df_cluster[common_fields] == pd.Series(key, index=common_fields)).all(axis=1)]
             print(row.to_string(index=False))
 
     if only_in_offline_keys:
-        print(f"\n  🔹 FULL ROWS only in offline ({len(only_in_offline_keys)}):")
-        for key in list(only_in_offline_keys)[:5]:  # limit preview
+        print(f"\n  🔹 FULL ROWS only in offline ({min(len(only_in_offline_keys), 5)} shown):")
+        for key in list(only_in_offline_keys)[:5]:
             row = df_offline.loc[(df_offline[common_fields] == pd.Series(key, index=common_fields)).all(axis=1)]
             print(row.to_string(index=False))
 
