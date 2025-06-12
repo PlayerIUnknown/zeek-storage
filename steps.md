@@ -1,3 +1,4 @@
+Windows:
 icacls zeektest.pem /inheritance:r
 icacls zeektest.pem /grant:r "%USERNAME%:R"
 
