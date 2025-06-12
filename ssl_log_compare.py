@@ -26,8 +26,8 @@ def run_zeek(pcap_file, output_dir):
     """Run Zeek on the merged pcap file and generate logs"""
     print(f"📦 Running Zeek on merged pcap file {pcap_file}...")
     os.makedirs(output_dir, exist_ok=True)
-    cmd = ["zeek", "-C", "-r", pcap_file, "-b", "-p", f"Log::default_path={output_dir}"]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    cmd = "cd {output_dir} && zeek -C -r {pcap_file}"
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
         print("❌ Zeek failed:", result.stderr.decode())
         exit(1)
