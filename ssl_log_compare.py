@@ -1,4 +1,4 @@
-# Install wireshark module on Manager - for mergecap
+# Install wireshark for mergecap
 
 import os
 import subprocess
@@ -26,8 +26,11 @@ def run_zeek(pcap_file, output_dir):
     """Run Zeek on the merged pcap file and generate logs"""
     print(f"📦 Running Zeek on merged pcap file {pcap_file}...")
     os.makedirs(output_dir, exist_ok=True)
-    cmd = "cd {output_dir} && zeek -C -r {pcap_file}"
-    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    # Run Zeek with the correct cwd (working directory)
+    cmd = ["zeek", "-C", "-r", pcap_file]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=output_dir)
+
     if result.returncode != 0:
         print("❌ Zeek failed:", result.stderr.decode())
         exit(1)
