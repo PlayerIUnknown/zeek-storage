@@ -4,7 +4,6 @@ import os
 import subprocess
 import pandas as pd
 import argparse
-import glob
 
 # === CONFIGURATION ===
 CLUSTER_LOG_DIR = "/opt/zeek/logs/current"
