@@ -1,4 +1,4 @@
-# Install wireshark for mergecap
+#Install Wireshark for Mergecap
 
 import os
 import subprocess
@@ -22,11 +22,11 @@ def run_mergecap(pcap_files, output_pcap):
         print(f"✅ Merged pcap saved to {output_pcap}")
 
 def run_zeek(pcap_file, output_dir):
-    """Run Zeek on the merged pcap file and generate logs"""
+    """Run Zeek on the merged pcap file and generate logs in the specified directory"""
     print(f"📦 Running Zeek on merged pcap file {pcap_file}...")
     os.makedirs(output_dir, exist_ok=True)
     
-    # Run Zeek with the correct cwd (working directory)
+    # Run Zeek in the specified output directory
     cmd = ["zeek", "-C", "-r", pcap_file]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=output_dir)
 
@@ -88,12 +88,14 @@ def compare_logs(cluster_dir, offline_dir, log_file):
     print(f"  ⚠️ Rows only in cluster: {len(only_in_cluster_keys)}")
     print(f"  ⚠️ Rows only in offline: {len(only_in_offline_keys)}")
 
+    # Display rows only in cluster (unique)
     if only_in_cluster_keys:
         print(f"\n  🔸 FULL ROWS only in cluster ({min(len(only_in_cluster_keys), 5)} shown):")
         for key in list(only_in_cluster_keys)[:5]:
             row = df_cluster.loc[(df_cluster[common_fields] == pd.Series(key, index=common_fields)).all(axis=1)]
             print(row.to_string(index=False))
 
+    # Display rows only in offline (unique)
     if only_in_offline_keys:
         print(f"\n  🔹 FULL ROWS only in offline ({min(len(only_in_offline_keys), 5)} shown):")
         for key in list(only_in_offline_keys)[:5]:
@@ -110,7 +112,7 @@ def main():
     run_mergecap(args.pcap_files, merged_pcap)
 
     # Run Zeek on the merged pcap and generate logs
-    temp_dir = "/tmp/zeek_temp_dir"
+    temp_dir = OUTPUT_DIR  # Use the OUTPUT_DIR here
     run_zeek(merged_pcap, temp_dir)
 
     # Compare ssl.log between cluster and offline logs
