@@ -52,3 +52,7 @@ To Do: **Shutdown Instances**:
    * After completing the traffic replay and log verification, the script will automatically **shut down** the instances.
 
 
+
+https://github.com/user-attachments/assets/191d5e7f-4b51-4f7c-9ee6-4bcc054fee0c
+
+
